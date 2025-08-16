@@ -3,7 +3,7 @@ services:
     name: xforum
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
+    buildCommand: "pip install -r requirements.txt && flask db upgrade"
     startCommand: "gunicorn run:app"
     envVars:
       - key: PYTHON_VERSION
@@ -16,24 +16,11 @@ services:
         mountPath: /var/data
         sizeGB: 1
 
-  - type: job
-    name: db-migrate
-    env: python
-    plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "flask db upgrade"
-    envVars:
-      - fromGroup: xforum-gmail-env
-    disks:
-      - name: forum-data
-        mountPath: /var/data
-        sizeGB: 1
-
 envVarGroups:
   - name: xforum-gmail-env
     envVars:
       - key: DATABASE_URL
-        value: "sqlite:////var/data/forum.db" # এই পাথটি এখন ডিস্কের পাথ
+        value: "sqlite:////var/data/forum.db"
       - key: MAIL_SERVER
         value: "smtp.googlemail.com"
       - key: MAIL_PORT
