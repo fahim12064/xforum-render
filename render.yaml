@@ -3,7 +3,7 @@ services:
     name: xforum
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt && flask db upgrade"
+    buildCommand: "pip install -r requirements.txt && mkdir -p /var/data && chmod 777 /var/data && flask db upgrade"
     startCommand: "gunicorn run:app"
     envVars:
       - key: PYTHON_VERSION
