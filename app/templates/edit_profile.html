@@ -1,0 +1,50 @@
+<!-- templates/edit_profile.html -->
+{% extends "base.html" %}
+
+{% block title %}Edit Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h2>Edit Your Profile</h2>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label") }}
+                        {{ form.username(class="form-control") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.bio.label(class="form-label") }}
+                        {{ form.bio(class="form-control", rows="4") }}
+                    </div>
+                    
+                    <!-- টেলিগ্রাম ফিল্ড আপডেট করা হয়েছে -->
+                    <div class="mb-3">
+                        {{ form.telegram_username.label(class="form-label") }}
+                        {{ form.telegram_username(class="form-control", placeholder="@your_username") }}
+                        <div class="form-text">{{ form.telegram_username.description }}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <p>Current Profile Picture:</p>
+                        <img src="{{ current_user.profile_picture_url() }}" alt="Profile Picture" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;">
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.profile_picture.label(class="form-label") }}
+                        {{ form.profile_picture(class="form-control") }}
+                    </div>
+                    
+                    {{ form.submit(class="btn btn-primary") }}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

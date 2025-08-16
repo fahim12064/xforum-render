@@ -1,0 +1,12 @@
+body {
+    background-color: #f8f9fa;
+}
+.navbar {
+    margin-bottom: 20px;
+}
+.container {
+    max-width: 960px;
+}
+.card {
+    border-radius: 8px;
+}

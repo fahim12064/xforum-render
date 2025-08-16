@@ -1,0 +1,35 @@
+{# templates/notifications.html (চূড়ান্ত এবং সরলীকৃত) #}
+
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h1 class="mb-4">Notifications</h1>
+        {% for notification in notifications %}
+            <div class="alert alert-info">
+                {% set payload = notification.get_payload() %}
+                {% if notification.name == 'new_like' %}
+                    <a href="{{ url_for('main.user_profile', username=payload.liker_username) }}">{{ payload.liker_username }}</a>
+                    liked your post: 
+                    <a href="{{ url_for('main.post_detail', post_id=payload.post_id) }}">{{ payload.post_title }}</a>
+                {% elif notification.name == 'new_comment' %}
+                    <a href="{{ url_for('main.user_profile', username=payload.commenter_username) }}">{{ payload.commenter_username }}</a>
+                    commented on your post: 
+                    <a href="{{ url_for('main.post_detail', post_id=payload.post_id) }}#comment-{{ payload.comment_id }}">{{ payload.post_title }}</a>
+                {% elif notification.name == 'new_reply' %}
+                    <a href="{{ url_for('main.user_profile', username=payload.replier_username) }}">{{ payload.replier_username }}</a>
+                    replied to your comment on the post: 
+                    <a href="{{ url_for('main.post_detail', post_id=payload.post_id) }}#comment-{{ payload.comment_id }}">{{ payload.post_title }}</a>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>You have no new notifications.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{# --- জাভাস্ক্রিপ্ট ব্লকটি সম্পূর্ণ মুছে ফেলা হয়েছে --- #}

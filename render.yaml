@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: xforum
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn run:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: SECRET_KEY
+        generateValue: true
+      - fromGroup: xforum-gmail-env # আমরা এই নামে একটি এনভায়রনমেন্ট গ্রুপ তৈরি করব
+
+envVarGroups:
+  - name: xforum-gmail-env
+    envVars:
+      - key: DATABASE_URL
+        value: "sqlite:///var/data/forum.db"
+      - key: MAIL_SERVER
+        value: "smtp.googlemail.com"
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_USE_TLS
+        value: "true"
+      - key: MAIL_USERNAME
+        value: "islamhriday625@gmail.com" # আপনার Gmail ইউজারনেম
+      - key: MAIL_PASSWORD
+        value: "jnekxaseoxemgjjb" # আপনার ১৬ অক্ষরের App Password
+      - key: MAIL_DEFAULT_SENDER
+        value: "islamhriday625@gmail.com" # আপনার Gmail ঠিকানা

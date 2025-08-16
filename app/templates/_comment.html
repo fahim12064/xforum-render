@@ -1,0 +1,43 @@
+{# app/templates/_comment.html #}
+{# এই ফাইলটি শুধুমাত্র একটি কমেন্ট রেন্ডার করার জন্য ব্যবহৃত হয় #}
+
+{# --- ম্যাক্রোটি এখন current_user আর্গুমেন্ট গ্রহণ করছে --- #}
+{% macro render_comment_tree(comment, post, form, current_user) %}
+    <div class="d-flex align-items-start mb-3" id="comment-{{ comment.id }}">
+        <img src="{{ comment.author.profile_picture_url() }}" alt="{{ comment.author.username }}" class="rounded-circle me-3" style="width: 45px; height: 45px; object-fit: cover;">
+        <div class="w-100">
+            <strong><a href="{{ url_for('main.user_profile', username=comment.author.username) }}">{{ comment.author.username }}</a></strong>
+            <span class="text-muted small ms-2">{{ comment.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+            <p class="mb-1">
+                {% if comment.parent %}
+                    <a href="{{ url_for('main.user_profile', username=comment.parent.author.username) }}" class="text-decoration-none me-1"><strong>@{{ comment.parent.author.username }}</strong></a>
+                {% endif %}
+                {{ comment.content }}
+            </p>
+            {% if current_user.is_authenticated %}
+                <small><a href="#" class="reply-btn" data-comment-id="{{ comment.id }}">Reply</a></small>
+            {% endif %}
+            <div id="reply-form-{{ comment.id }}" class="reply-form mt-2" style="display: none;">
+                <form method="POST" class="comment-form" action="{{ url_for('main.post_detail', post_id=post.id) }}">
+                    {{ form.hidden_tag() }}
+                    <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                    <div class="mb-2">{{ form.content(class="form-control form-control-sm", rows="2", placeholder="Write a reply...") }}</div>
+                    {{ form.submit(class="btn btn-primary btn-sm", value="Post Reply") }}
+                </form>
+            </div>
+            <div class="nested-comments mt-3" id="replies-to-{{ comment.id }}">
+                {% if comment.replies %}
+                    {% for reply in comment.replies|sort(attribute='created_at') %}
+                        {# --- এখানেও current_user পাস করা হচ্ছে --- #}
+                        {{ render_comment_tree(reply, post, form, current_user) }}
+                    {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endmacro %}
+
+{# --- নিচের কন্ডিশনটি এখন current_user পাস করবে --- #}
+{% if comment is defined %}
+    {{ render_comment_tree(comment, post, form, current_user) }}
+{% endif %}

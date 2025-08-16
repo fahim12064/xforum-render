@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Search Results for "{{ query }}"{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <h2 class="mb-4">Search Results for: <span class="text-primary">"{{ query }}"</span></h2>
+        <p class="text-muted">{{ posts.total }} result(s) found.</p>
+        <hr>
+
+        {% if posts.items %}
+            {% for post in posts.items %}
+                <div class="card mb-4 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <img src="{{ post.author.profile_picture_url() }}" alt="{{ post.author.username }}" class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                            <div class="w-100">
+                                <h5 class="card-title mb-1"><a href="{{ url_for('main.post_detail', post_id=post.id) }}">{{ post.title }}</a></h5>
+                                <p class="card-subtitle mb-2 text-muted small">
+                                    By <a href="{{ url_for('main.user_profile', username=post.author.username) }}">{{ post.author.username }}</a> on {{ post.created_at.strftime('%B %d, %Y') }}
+                                </p>
+                                <p class="card-text">{{ post.content[:200] | safe }}...</p>
+                                <div class="d-flex align-items-center mt-3">
+                                    <a href="{{ url_for('main.post_detail', post_id=post.id) }}" class="btn btn-primary btn-sm">Read More</a>
+                                    {% if current_user.is_authenticated and post.author_id == current_user.id %}
+                                    <a href="{{ url_for('main.edit_post', post_id=post.id) }}" class="btn btn-secondary btn-sm ms-2">Edit</a>
+                                    <form action="{{ url_for('main.delete_post', post_id=post.id) }}" method="POST" class="d-inline ms-2">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</button>
+                                    </form>
+                                    {% endif %}
+                                    <div class="ms-auto d-flex align-items-center">
+                                        <button class="btn btn-outline-success btn-sm d-flex align-items-center vote-btn" data-post-id="{{ post.id }}" data-vote-type="like">
+                                            <span class="me-1">👍</span> <span id="likes-count-{{ post.id }}">{{ post.likes }}</span>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm d-flex align-items-center ms-2 vote-btn" data-post-id="{{ post.id }}" data-vote-type="dislike">
+                                            <span class="me-1">👎</span> <span id="dislikes-count-{{ post.id }}">{{ post.dislikes }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">No results found for your query.</div>
+        {% endif %}
+
+        {% if posts.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% set args = request.args.copy() %}
+                {% do args.pop('page', None) %}
+                <li class="page-item {% if not posts.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for(request.endpoint, page=posts.prev_num, **args) }}">Previous</a>
+                </li>
+                {% for page_num in posts.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if posts.page == page_num %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for(request.endpoint, page=page_num, **args) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not posts.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for(request.endpoint, page=posts.next_num, **args) }}">Next</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{# --- ফাইল: app/templates/search_results.html --- #}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = '{{ csrf_token() }}';
+
+    document.body.addEventListener('click', function(e) {
+        const voteButton = e.target.closest('.vote-btn');
+        if (voteButton) {
+            e.preventDefault();
+            
+            if (!{{ current_user.is_authenticated | tojson }}) {
+                window.location.href = "{{ url_for('main.login_required_page') }}";
+                return;
+            }
+
+            const postId = voteButton.dataset.postId;
+            const voteType = voteButton.dataset.voteType;
+
+            fetch(`/vote/${postId}/${voteType}`, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById(`likes-count-${postId}`).textContent = data.likes;
+                    document.getElementById(`dislikes-count-${postId}`).textContent = data.dislikes;
+                } else if (data.message === 'login_required') {
+                    window.location.href = "{{ url_for('main.login_required_page') }}";
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    });
+});
+</script>
+{% endblock %}

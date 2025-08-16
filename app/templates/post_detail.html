@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content %}
+
+{# ম্যাক্রো এখন _comment.html থেকে ইম্পোর্ট করা হচ্ছে #}
+{% from '_comment.html' import render_comment_tree %}
+
+<div class="row justify-content-center">
+    <div class="col-md-9">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h1 class="card-title">{{ post.title }}</h1>
+                <p class="card-subtitle mb-3 text-muted">
+                    Posted by <a href="{{ url_for('main.user_profile', username=post.author.username) }}">{{ post.author.username }}</a> on {{ post.created_at.strftime('%B %d, %Y') }}
+                </p>
+                <hr>
+                {% if post.image %}
+                    <img src="{{ url_for('static', filename='uploads/posts/' + post.image) }}" class="img-fluid rounded mb-3" alt="Post Image">
+                {% endif %}
+                <div class="post-content mb-4">{{ post.content | safe }}</div>
+
+                <div class="d-flex align-items-center">
+                    <button class="btn btn-outline-success btn-sm d-flex align-items-center vote-btn" data-post-id="{{ post.id }}" data-vote-type="like">
+                        <span class="me-1">👍</span> <span id="likes-count-{{ post.id }}">{{ post.likes }}</span>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm d-flex align-items-center ms-2 vote-btn" data-post-id="{{ post.id }}" data-vote-type="dislike">
+                        <span class="me-1">👎</span> <span id="dislikes-count-{{ post.id }}">{{ post.dislikes }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header"><h4>Comments</h4></div>
+            <div class="card-body">
+                {% if current_user.is_authenticated %}
+                    <form method="POST" id="main-comment-form" class="comment-form mb-4" action="{{ url_for('main.post_detail', post_id=post.id) }}">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">{{ form.content(class="form-control", rows="3", placeholder="Add a comment...") }}</div>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </form>
+                {% else %}
+                    <div class="alert alert-info">Please <a href="{{ url_for('auth.login', next=request.url) }}">log in</a> to post a comment.</div>
+                {% endif %}
+                <hr>
+                
+                <div id="comment-list">
+                    {% for comment in comments %}
+                        {# --- এখানে current_user পাস করা হচ্ছে --- #}
+                        {{ render_comment_tree(comment, post, form, current_user) }}
+                    {% else %}
+                        <p id="no-comments-yet">No comments yet. Be the first to comment!</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Back to All Posts</a>
+    </div>
+</div>
+
+{% endblock %} {# content ব্লক শেষ #}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = '{{ csrf_token() }}';
+
+    // --- ভোট এবং কমেন্ট উভয়ের জন্য একটি ডেলিগেটেড ইভেন্ট লিসেনার ---
+    document.body.addEventListener('click', function(e) {
+        const voteButton = e.target.closest('.vote-btn');
+        const replyButton = e.target.closest('.reply-btn');
+
+        if (voteButton) {
+            e.preventDefault();
+            if (!{{ current_user.is_authenticated | tojson }}) {
+                window.location.href = "{{ url_for('main.login_required_page') }}";
+                return;
+            }
+            // ভোটের AJAX
+            const postId = voteButton.dataset.postId;
+            const voteType = voteButton.dataset.voteType;
+            fetch(`/vote/${postId}/${voteType}`, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById(`likes-count-${postId}`).textContent = data.likes;
+                    document.getElementById(`dislikes-count-${postId}`).textContent = data.dislikes;
+                } else if (data.message === 'login_required') {
+                    window.location.href = "{{ url_for('main.login_required_page') }}";
+                }
+            });
+        }
+
+        if (replyButton) {
+            e.preventDefault();
+            const commentId = replyButton.dataset.commentId;
+            const form = document.getElementById('reply-form-' + commentId);
+            document.querySelectorAll('.reply-form').forEach(openForm => {
+                if (openForm.id !== form.id) openForm.style.display = 'none';
+            });
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+    });
+
+    // --- কমেন্ট ফর্ম সাবমিশনের জন্য AJAX হ্যান্ডলার ---
+    document.body.addEventListener('submit', function(e) {
+        if (e.target.matches('.comment-form')) {
+            e.preventDefault();
+            const form = e.target;
+            const formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRF-Token': csrfToken }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (data.parent_id) {
+                        const repliesContainer = document.getElementById(`replies-to-${data.parent_id}`);
+                        repliesContainer.insertAdjacentHTML('beforeend', data.comment_html);
+                        form.closest('.reply-form').style.display = 'none';
+                    } else {
+                        const commentList = document.getElementById('comment-list');
+                        const noCommentsMsg = document.getElementById('no-comments-yet');
+                        if (noCommentsMsg) noCommentsMsg.remove();
+                        commentList.insertAdjacentHTML('beforeend', data.comment_html);
+                    }
+                    form.reset();
+                } else if (data.message === 'login_required') {
+                    window.location.href = "{{ url_for('main.login_required_page') }}";
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
