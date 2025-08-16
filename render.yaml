@@ -11,6 +11,10 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - fromGroup: xforum-gmail-env
+    disks:
+      - name: forum-data
+        mountPath: /var/data
+        sizeGB: 1
 
   - type: job
     name: db-migrate
@@ -20,12 +24,16 @@ services:
     startCommand: "flask db upgrade"
     envVars:
       - fromGroup: xforum-gmail-env
+    disks:
+      - name: forum-data
+        mountPath: /var/data
+        sizeGB: 1
 
 envVarGroups:
   - name: xforum-gmail-env
     envVars:
       - key: DATABASE_URL
-        value: "sqlite:///var/data/forum.db"
+        value: "sqlite:////var/data/forum.db" # এই পাথটি এখন ডিস্কের পাথ
       - key: MAIL_SERVER
         value: "smtp.googlemail.com"
       - key: MAIL_PORT
@@ -33,8 +41,8 @@ envVarGroups:
       - key: MAIL_USE_TLS
         value: "true"
       - key: MAIL_USERNAME
-        value: "islamhriday625@gmail.com"  # আপনার Gmail ইউজারনেম
+        value: "islamhriday625@gmail.com"
       - key: MAIL_PASSWORD
-        value: "jnekxaseoxemgjjb"          # আপনার ১৬ অক্ষরের App Password
+        value: "jnekxaseoxemgjjb"
       - key: MAIL_DEFAULT_SENDER
-        value: "islamhriday625@gmail.com"  # আপনার Gmail ঠিকানা
+        value: "islamhriday625@gmail.com"
